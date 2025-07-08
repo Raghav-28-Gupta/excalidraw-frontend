@@ -43,6 +43,7 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
           StartY = e.clientY;
      })
      canvas.addEventListener("mouseup", (e) => {
+          console.log("Mouse up event fired");
           clicked = false;
           const width = e.clientX - StartX;
           const height = e.clientY - StartY;
@@ -55,13 +56,15 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
           };
           // @ts-ignore
           existingShapes.push(shape);
-
+          console.log("Before WebSocket send check", socket.readyState);
           if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-               type: "chat",
-               message: JSON.stringify({shape}),
-               roomId
-          }));
+               console.log("data sending")
+               socket.send(JSON.stringify({
+                    type: "chat",
+                    message: JSON.stringify({shape}),
+                    roomId
+               }));
+               console.log("data sent")
           } else {
                console.warn("WebSocket not ready, state:", socket.readyState);
           }
