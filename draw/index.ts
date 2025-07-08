@@ -63,7 +63,7 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
                roomId
           }));
           } else {
-               console.warn("WebSocket is not open. Message not sent.");
+               console.warn("WebSocket not ready, state:", socket.readyState);
           }
      })
 

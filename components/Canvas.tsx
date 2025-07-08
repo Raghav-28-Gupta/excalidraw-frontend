@@ -9,7 +9,7 @@ export function Canvas({roomId, socket} : {roomId : string, socket: WebSocket}) 
                const canvas = canvasRef.current;
                initDraw(canvas, roomId, socket);
           }
-     }, []);
+     }, [socket.readyState]);
      
      return <div>
           <canvas ref={canvasRef} width={2000} height={1000}></canvas>
