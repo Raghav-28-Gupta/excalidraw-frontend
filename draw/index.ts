@@ -56,10 +56,15 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
           // @ts-ignore
           existingShapes.push(shape);
 
+          if (socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({
                type: "chat",
-               message: JSON.stringify({shape})
-          }))
+               message: JSON.stringify({shape}),
+               roomId
+          }));
+          } else {
+               console.warn("WebSocket is not open. Message not sent.");
+          }
      })
 
      
