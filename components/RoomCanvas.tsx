@@ -5,7 +5,6 @@ import { Canvas } from "./Canvas";
 
 export function RoomCanvas({roomId} : {roomId : string}) {
      const [socket, setSocket] = useState<WebSocket | null>(null);
-     const [isReady, setIsReady] = useState(false);
 
      useEffect(() => {
           const ws = new WebSocket(`${WS_URL}?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFjZTAzNzM1LTBkZWMtNDhmMC05ZDI2LWQyYzJlMDQ2MDBmNCIsImlhdCI6MTc1MTk5MDU1MH0.laD4WyfM0XOCUmuGY9QXq4s9VGHFoe2azas754fNprg`);
@@ -18,17 +17,15 @@ export function RoomCanvas({roomId} : {roomId : string}) {
                });
                console.log(data);
                ws.send(data);
-               setIsReady(true); // Mark as ready after joining room
           }
 
-          ws.onclose = () => {
-               setSocket(null);
-               setIsReady(false);
-          }
+          ws.onerror = (err) => {
+               console.error("WebSocket error:", err);
+          };
 
-     }, [roomId])
+     }, [])
 
-     if(!socket || !isReady) {
+     if(!socket) {
           return <div>
                Connecting to server...
           </div>
