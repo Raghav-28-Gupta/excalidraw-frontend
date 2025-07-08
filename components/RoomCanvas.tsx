@@ -1,6 +1,5 @@
 "use client"
 import { WS_URL } from "@/config";
-import { initDraw } from "@/draw";
 import { useEffect, useRef, useState } from "react";
 import { Canvas } from "./Canvas";
 
@@ -8,7 +7,7 @@ export function RoomCanvas({roomId} : {roomId : string}) {
      const [socket, setSocket] = useState<WebSocket | null>(null);
 
      useEffect(() => {
-          const ws = new WebSocket(WS_URL);
+          const ws = new WebSocket(`${WS_URL}?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjFjZTAzNzM1LTBkZWMtNDhmMC05ZDI2LWQyYzJlMDQ2MDBmNCIsImlhdCI6MTc1MTk5MDU1MH0.laD4WyfM0XOCUmuGY9QXq4s9VGHFoe2azas754fNprg`);
           ws.onopen = () => {
                setSocket(ws);
           }
@@ -23,6 +22,6 @@ export function RoomCanvas({roomId} : {roomId : string}) {
      }
 
      return <div>
-          <Canvas roomId={roomId}/>
+          <Canvas roomId={roomId} socket={socket}/>
      </div>
 }
