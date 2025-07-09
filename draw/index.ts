@@ -47,15 +47,32 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
           clicked = false;
           const width = e.clientX - StartX;
           const height = e.clientY - StartY;
-          const shape = {
-               type: "rect",
-               x: StartX,
-               y: StartY,
-               width, 
-               height
-          };
           // @ts-ignore
-          existingShapes.push(shape);
+          const selectedTool = window.selectedTool;
+          let shape: Shape | null = null;
+          if (selectedTool === "rect") {
+               shape = {
+                    type: "rect",
+                    x: StartX,
+                    y: StartY,
+                    height,
+                    width
+               }
+          } else if (selectedTool === "circle") {
+               const radius = Math.max(width, height) / 2;
+               shape = {
+                    type: "circle",
+                    radius: radius,
+                    centreX: StartX + radius,
+                    centreY: StartY + radius,
+               }
+          }
+
+          if (!shape) {
+               return;
+          }
+
+        existingShapes.push(shape);
           console.log("Before WebSocket send check", socket.readyState);
           if (socket.readyState === WebSocket.OPEN) {
                console.log("data sending")
@@ -78,7 +95,20 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
                const height = e.clientY - StartY;
                clearCanvas(existingShapes, canvas, ctx);
                ctx.strokeStyle = "rgba(255, 255, 255)";
-               ctx.strokeRect(StartX, StartY, width, height);
+               // @ts-ignore
+               const selectedTool = window.selectedTool;
+               if(selectedTool === "rectangle") {
+                    ctx.strokeRect(StartX, StartY, width, height);
+               } else if(selectedTool === "circle") {
+                    ctx.beginPath();
+                    const centreX = StartX + width / 2;
+                    const centreY = StartY + height / 2;
+                    const radius = Math.max(Math.abs(width), Math.abs(height)) / 2;
+                    ctx.arc(centreX, centreY, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.closePath();
+               }
+               
           }
      })
 }
@@ -93,6 +123,11 @@ function clearCanvas(existingShapes: Shape[], canvas: HTMLCanvasElement, ctx: Ca
           if(shape.type === "rect") {
                ctx.strokeStyle = "rgba(255, 255, 255)";
                ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+          } else if(shape.type === 'circle') {
+               ctx.beginPath();
+               ctx.arc(shape.centreX, shape.centreY, shape.radius, 0, Math.PI * 2);
+               ctx.stroke();
+               ctx.closePath(); 
           }
      })
 }
