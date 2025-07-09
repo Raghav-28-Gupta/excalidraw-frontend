@@ -83,13 +83,13 @@ export class Game {
      }
 
      
-     mouseDownHandler = (e) => {
+     mouseDownHandler = (e: MouseEvent) => {
           this.clicked = true;
           this.StartX = e.clientX;
           this.StartY = e.clientY;
      }
      
-     mouseUpHandler = (e) => {
+     mouseUpHandler = (e: MouseEvent) => {
           console.log("Mouse up event fired");
           this.clicked = false;
           const width = e.clientX - this.StartX;
@@ -133,7 +133,7 @@ export class Game {
           }
      }
 
-     mouseMoveHandler = (e) => {
+     mouseMoveHandler = (e: MouseEvent) => {
           if(this.clicked) {
                const width = e.clientX - this.StartX;
                const height = e.clientY - this.StartY;
