@@ -2,7 +2,7 @@ import { Tool } from "@/components/Canvas";
 import { getShapes } from "./http";
 
 type Shape = {
-     type: "rect";
+     type: "rectangle";
      x: number;
      y: number;
      width: number;
@@ -70,7 +70,7 @@ export class Game {
           this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
           this.existingShapes.map((shape) => {
-               if(shape.type === "rect") {   
+               if(shape.type === "rectangle") {   
                     this.ctx.strokeStyle = "rgba(255, 255, 255)";
                     this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
                } else if(shape.type === 'circle') {
@@ -95,17 +95,16 @@ export class Game {
           const width = e.clientX - this.StartX;
           const height = e.clientY - this.StartY;
           // @ts-ignore
-          const selectedTool = window.selectedTool;
           let shape: Shape | null = null;
-          if (selectedTool === "rect") {
+          if (this.selectedTool === "rectangle") {
                shape = {
-                    type: "rect",
+                    type: "rectangle",
                     x: this.StartX,
                     y: this.StartY,
                     height,
                     width
                }
-          } else if (selectedTool === "circle") {
+          } else if (this.selectedTool === "circle") {
                const radius = Math.max(width, height) / 2;
                shape = {
                     type: "circle",
@@ -140,11 +139,9 @@ export class Game {
                const height = e.clientY - this.StartY;
                this.clearCanvas();
                this.ctx.strokeStyle = "rgba(255, 255, 255)";
-               // @ts-ignore
-               const selectedTool = window.selectedTool;
-               if(selectedTool === "rectangle") {
+               if(this.selectedTool === "rectangle") {
                     this.ctx.strokeRect(this.StartX, this.StartY, width, height);
-               } else if(selectedTool === "circle") {
+               } else if(this.selectedTool === "circle") {
                     this.ctx.beginPath();
                     const centreX = this.StartX + width / 2;
                     const centreY = this.StartY + height / 2;
