@@ -42,6 +42,7 @@ export async function initDraw(canvas:HTMLCanvasElement, roomId: string, socket:
           StartX = e.clientX;
           StartY = e.clientY;
      })
+     
      canvas.addEventListener("mouseup", (e) => {
           console.log("Mouse up event fired");
           clicked = false;
@@ -120,7 +121,7 @@ function clearCanvas(existingShapes: Shape[], canvas: HTMLCanvasElement, ctx: Ca
      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
      existingShapes.map((shape) => {
-          if(shape.type === "rect") {
+          if(shape.type === "rect") {   
                ctx.strokeStyle = "rgba(255, 255, 255)";
                ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
           } else if(shape.type === 'circle') {
