@@ -51,7 +51,7 @@ export class Game {
           this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
      }
 
-     setTool(tool: "circle" | "rectangle" | "pencil"){
+     setTool(tool: "circle" | "rectangle" | "pencil" | "eraser"){
           this.selectedTool = tool;
      }
 
@@ -109,6 +109,26 @@ export class Game {
           this.clicked = false;
           const width = e.clientX - this.StartX;
           const height = e.clientY - this.StartY;
+
+          if (this.selectedTool === "eraser") {
+               const cursorX = e.clientX;
+               const cursorY = e.clientY;
+
+               const newShapes = this.existingShapes.filter((shape) => {
+                    return !(
+                    this.isPointNearRect(cursorX, cursorY, shape) ||
+                    this.isPointNearCircle(cursorX, cursorY, shape) ||
+                    this.isPointNearPencil(cursorX, cursorY, shape)
+                    );
+               });
+
+               if (newShapes.length !== this.existingShapes.length) {
+                    this.existingShapes = newShapes;
+                    this.clearCanvas();
+               }
+               return;
+          }
+
           // @ts-ignore
           let shape: Shape | null = null;
           if (this.selectedTool === "rectangle") {
@@ -136,7 +156,7 @@ export class Game {
                // this.pencilPoints.map((p) => [p.x, p.y]),
                //      { stroke: "white" }
                // );
-          }
+          } 
 
           if (!shape) {
                return;
@@ -194,5 +214,32 @@ export class Game {
           this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
      }
 
-          
+     isPointNearRect(px: number, py: number, shape: Shape): boolean {
+          if (shape.type !== "rectangle") return false;
+          return (
+          px >= shape.x &&
+          px <= shape.x + shape.width &&
+          py >= shape.y &&
+          py <= shape.y + shape.height
+          );
+     }
+
+     isPointNearCircle(px: number, py: number, shape: Shape): boolean {
+          if (shape.type !== "circle") return false;
+          const dx = px - shape.centreX;
+          const dy = py - shape.centreY;
+          return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
+     }
+
+     isPointNearPencil(px: number, py: number, shape: Shape): boolean {
+          if (shape.type !== "pencil") return false;
+          for (let point of shape.points) {
+          const dx = px - point.x;
+          const dy = py - point.y;
+          if (Math.sqrt(dx * dx + dy * dy) <= 10) return true;
+          }
+          return false;
+     }
+
 }
+

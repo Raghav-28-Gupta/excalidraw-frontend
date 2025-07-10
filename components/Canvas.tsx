@@ -1,11 +1,11 @@
 import { initDraw } from "@/draw";
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon } from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Eraser} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Game } from "@/draw/Game";
 
-export type Tool = "circle" | "rectangle" | "pencil";
+export type Tool = "circle" | "rectangle" | "pencil" | "eraser";
 
 export function Canvas({
      roomId,
@@ -61,30 +61,32 @@ function TopBar({
      setSelectedTool: (s: Tool) => void;
 }) {
      return (
-     <div
-          style={{
-          position: "fixed",
-          top: 10,
-          left: 10,
-          }}
-     >
-          <div className="flex gap-2">
-          <IconButton
-               activated={selectedTool === "pencil"}
-               icon={<Pencil />}
-               onClick={() => setSelectedTool("pencil")}
-          ></IconButton>
-          <IconButton
-               activated={selectedTool === "rectangle"}
-               icon={<RectangleHorizontalIcon />}
-               onClick={() => setSelectedTool("rectangle")}
-          ></IconButton>
-          <IconButton
-               activated={selectedTool === "circle"}
-               icon={<Circle />}
-               onClick={() => setSelectedTool("circle")}
-          ></IconButton>
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+               <div className="flex items-center gap-2 bg-gray-900/90 backdrop-blur-sm border border-gray-700 rounded-xl px-4 py-2 shadow-lg">
+                    <IconButton
+                         activated={selectedTool === "pencil"}
+                         icon={<Pencil size={20} />}
+                         onClick={() => setSelectedTool("pencil")}
+                    />
+                    <div className="w-px h-6 bg-gray-600" />
+                    <IconButton
+                         activated={selectedTool === "rectangle"}
+                         icon={<RectangleHorizontalIcon size={20} />}
+                         onClick={() => setSelectedTool("rectangle")}
+                    />
+                    <div className="w-px h-6 bg-gray-600" />
+                    <IconButton
+                         activated={selectedTool === "circle"}
+                         icon={<Circle size={20} />}
+                         onClick={() => setSelectedTool("circle")}
+                    />
+                    <div className="w-px h-6 bg-gray-600" />
+                    <IconButton
+                         activated={selectedTool === "eraser"}
+                         icon={<Eraser size={20} />}
+                         onClick={() => setSelectedTool("eraser")}
+                    />
+               </div>
           </div>
-     </div>
      );
 }
