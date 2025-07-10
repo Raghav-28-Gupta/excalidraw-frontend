@@ -30,6 +30,14 @@ export class Game {
      private pencilPoints: { x: number; y: number }[] = [];
      private rc: ReturnType<typeof rough.canvas>;
 
+     // Zoom Implementation
+     private scale = 1;
+     private offsetX = 0;
+     private offsetY = 0;
+     private minScale = 0.2;
+     private maxScale = 10;
+
+
      socket: WebSocket;
 
      constructor(canvas:HTMLCanvasElement, roomId: string, socket: WebSocket) {
@@ -49,6 +57,7 @@ export class Game {
           this.canvas.removeEventListener("mousedown", this.mouseDownHandler);
           this.canvas.removeEventListener("mouseup", this.mouseUpHandler);         
           this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
+          this.canvas.removeEventListener("wheel", this.handleWheel);
      }
 
      setTool(tool: "circle" | "rectangle" | "pencil" | "eraser"){
@@ -72,9 +81,16 @@ export class Game {
      }
 
      clearCanvas() {
+          this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset any transform
           this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-          this.ctx.fillStyle = "rgba(0, 0, 0)";
-          this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+          // Apply zoom and pan
+          this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
+
+          // Draw background
+          this.ctx.fillStyle = "black";
+          this.ctx.fillRect(0, 0, this.canvas.width / this.scale, this.canvas.height / this.scale);
+
 
           for (const shape of this.existingShapes) {
                if (shape.type === "rectangle") {
@@ -212,7 +228,29 @@ export class Game {
           this.canvas.addEventListener("mousedown", this.mouseDownHandler);
           this.canvas.addEventListener("mouseup", this.mouseUpHandler);         
           this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
+          this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
      }
+
+     handleWheel = (e: WheelEvent) => {
+          e.preventDefault();
+          const zoomSensitivity = 0.1;
+          const mouseX = e.offsetX;
+          const mouseY = e.offsetY;
+
+          const direction = e.deltaY > 0 ? -1 : 1;
+          const zoomFactor = 1 + direction * zoomSensitivity;
+
+          const newScale = this.scale * zoomFactor;
+          if (newScale < this.minScale || newScale > this.maxScale) return;
+
+          // Adjust offset to zoom around mouse
+          this.offsetX = mouseX - ((mouseX - this.offsetX) * zoomFactor);
+          this.offsetY = mouseY - ((mouseY - this.offsetY) * zoomFactor);
+
+          this.scale = newScale;
+          this.clearCanvas();
+     };
+
 
      isPointNearRect(px: number, py: number, shape: Shape): boolean {
           if (shape.type !== "rectangle") return false;
