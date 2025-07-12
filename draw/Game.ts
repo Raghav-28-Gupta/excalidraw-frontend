@@ -276,7 +276,6 @@ export class Game {
                }
                return;
           }
-
           // @ts-ignore
           let shape: Shape | null = null;
           if (this.selectedTool === "rectangle") {
