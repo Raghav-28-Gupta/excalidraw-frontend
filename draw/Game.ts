@@ -43,6 +43,12 @@ export class Game {
      private panStartY = 0;
      private panStartOffsetX = 0;
      private panStartOffsetY = 0;
+     
+     // Zoom properties
+     private scale = 1;
+     private minScale = 0.1;
+     private maxScale = 5;
+     private zoomSpeed = 0.1;
 
      socket: WebSocket;
 
@@ -74,16 +80,16 @@ export class Game {
      // Converting screen coordinates to world coordinates
      private screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
           return {
-               x: screenX - this.offsetX,
-               y: screenY - this.offsetY
+               x: (screenX - this.offsetX) / this.scale,
+               y: (screenY - this.offsetY) / this.scale
           };
      }
 
      // Converting world coordinates to screen coordinates
      private worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
           return {
-               x: worldX + this.offsetX,
-               y: worldY + this.offsetY
+               x: worldX * this.scale + this.offsetX,
+               y: worldY * this.scale + this.offsetY
           };
      }
 
@@ -130,8 +136,9 @@ export class Game {
 
           // Save current transformation
           this.ctx.save();
-          // Apply translation for infinite canvas
+          // Apply translation and scaling for infinite canvas with zoom
           this.ctx.translate(this.offsetX, this.offsetY);
+          this.ctx.scale(this.scale, this.scale);
 
           for (const shape of this.existingShapes) {
                if (shape.type === "rectangle") {
@@ -307,6 +314,7 @@ export class Game {
                     // Save current transformation
                     this.ctx.save();
                     this.ctx.translate(this.offsetX, this.offsetY);
+                    this.ctx.scale(this.scale, this.scale);
                     
                     this.rc.linearPath(
                          this.pencilPoints.map((p) => [p.x, p.y]),
@@ -324,6 +332,7 @@ export class Game {
                     // Save current transformation
                     this.ctx.save();
                     this.ctx.translate(this.offsetX, this.offsetY);
+                    this.ctx.scale(this.scale, this.scale);
                     
                     if (this.selectedTool === "rectangle") {
                          this.rc.rectangle(this.StartX, this.StartY, width, height, {
@@ -359,12 +368,35 @@ export class Game {
      wheelHandler = (e: WheelEvent) => {
           e.preventDefault();
           
-          // Pan with wheel
-          const panSpeed = 1;
-          this.offsetX -= e.deltaX * panSpeed;
-          this.offsetY -= e.deltaY * panSpeed;
+          const mousePos = this.getMousePosition(e);
           
-          this.clearCanvas();
+          // Check if Ctrl/Cmd is held for zooming
+          if (e.ctrlKey || e.metaKey) {
+               // Zoom functionality
+               const zoomFactor = e.deltaY > 0 ? (1 - this.zoomSpeed) : (1 + this.zoomSpeed);
+               const newScale = Math.max(this.minScale, Math.min(this.maxScale, this.scale * zoomFactor));
+               
+               if (newScale !== this.scale) {
+                    // Zoom towards mouse position
+                    const worldPos = this.screenToWorld(mousePos.x, mousePos.y);
+                    
+                    this.scale = newScale;
+                    
+                    // Adjust offset to zoom towards mouse position
+                    const newScreenPos = this.worldToScreen(worldPos.x, worldPos.y);
+                    this.offsetX += mousePos.x - newScreenPos.x;
+                    this.offsetY += mousePos.y - newScreenPos.y;
+                    
+                    this.clearCanvas();
+               }
+          } else {
+               // Pan with wheel
+               const panSpeed = 1;
+               this.offsetX -= e.deltaX * panSpeed;
+               this.offsetY -= e.deltaY * panSpeed;
+               
+               this.clearCanvas();
+          }
      }
 
      preventContextMenu = (e: Event) => {
@@ -423,6 +455,7 @@ export class Game {
      public resetView() {
           this.offsetX = 0;
           this.offsetY = 0;
+          this.scale = 1;
           this.clearCanvas();
      }
 
@@ -430,9 +463,32 @@ export class Game {
           return {
                offsetX: this.offsetX,
                offsetY: this.offsetY,
+               scale: this.scale,
                width: this.canvas.width,
                height: this.canvas.height
           };
+     }
+
+     // Additional zoom control methods
+     public zoomIn() {
+          const newScale = Math.min(this.maxScale, this.scale * (1 + this.zoomSpeed));
+          if (newScale !== this.scale) {
+               this.scale = newScale;
+               this.clearCanvas();
+          }
+     }
+
+     public zoomOut() {
+          const newScale = Math.max(this.minScale, this.scale * (1 - this.zoomSpeed));
+          if (newScale !== this.scale) {
+               this.scale = newScale;
+               this.clearCanvas();
+          }
+     }
+
+     public setZoom(scale: number) {
+          this.scale = Math.max(this.minScale, Math.min(this.maxScale, scale));
+          this.clearCanvas();
      }
 }
 
