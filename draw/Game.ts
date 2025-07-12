@@ -32,6 +32,8 @@ export class Game {
      private selectedTool: Tool = "circle";
      private pencilPoints: { x: number; y: number }[] = [];
      private rc: ReturnType<typeof rough.canvas>;
+     private lastMoveTime = 0;
+     private moveThrottle = 16; // ~60fps  -> Thanks AI!
 
      socket: WebSocket;
 
@@ -110,8 +112,10 @@ export class Game {
      
      mouseDownHandler = (e: MouseEvent) => {
           this.clicked = true;
-          this.StartX = e.clientX;
-          this.StartY = e.clientY;
+          // Convert to canvas coordinates
+          const rect = this.canvas.getBoundingClientRect();
+          this.StartX = e.clientX - rect.left;
+          this.StartY = e.clientY - rect.top;
 
           if (this.selectedTool === "pencil") {
                this.pencilPoints = [{ x: this.StartX, y: this.StartY }];
@@ -121,12 +125,16 @@ export class Game {
      mouseUpHandler = (e: MouseEvent) => {
           console.log("Mouse up event fired");
           this.clicked = false;
-          const width = e.clientX - this.StartX;
-          const height = e.clientY - this.StartY;
+          // Convert to canvas coordinates
+          const rect = this.canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+          const width = mouseX - this.StartX;
+          const height = mouseY - this.StartY;
 
           if (this.selectedTool === "eraser") {
-               const cursorX = e.clientX;
-               const cursorY = e.clientY;
+               const cursorX = mouseX;
+               const cursorY = mouseY;
 
                // Find shapes that will be erased
                const shapesToErase = this.existingShapes.filter((shape) => {
@@ -149,7 +157,7 @@ export class Game {
                     this.existingShapes = newShapes;
                     this.clearCanvas();
                     
-                    // Sending erase action to backend and other clients
+                    // Sending erase action to backend and other clients to delete their entries from the table
                     if (this.socket.readyState === WebSocket.OPEN) {
                          this.socket.send(JSON.stringify({
                               type: "erase",
@@ -178,8 +186,8 @@ export class Game {
                     id: crypto.randomUUID(),
                     type: "circle",
                     radius: radius,
-                    centreX: this.StartX + radius,
-                    centreY: this.StartY + radius,
+                    centreX: this.StartX + width / 2,
+                    centreY: this.StartY + height / 2,
                }
           } else if(this.selectedTool === "pencil") {
                shape = {
@@ -213,28 +221,43 @@ export class Game {
      }
 
      mouseMoveHandler = (e: MouseEvent) => {
-          if(this.clicked) {
-               const width = e.clientX - this.StartX;
-               const height = e.clientY - this.StartY;
-               this.clearCanvas();
-               if (this.selectedTool === "rectangle") {
-                    this.rc.rectangle(this.StartX, this.StartY, width, height, {
-                         stroke: "white",
-                    });
-               } else if (this.selectedTool === "circle") {
-                    const radius = Math.max(Math.abs(width), Math.abs(height)) / 2;
-                    const centreX = this.StartX + width / 2;
-                    const centreY = this.StartY + height / 2;
-                    this.rc.circle(centreX, centreY, radius * 2, {
-                         stroke: "white",
-                    });
-               } else if(this.selectedTool === "pencil") {
-                    this.pencilPoints.push({ x: e.clientX, y: e.clientY });
-                    this.clearCanvas();
+          // Throttle mouse move events to ~60fps to reduce jittering
+          const now = Date.now();
+          if (now - this.lastMoveTime < this.moveThrottle) {
+               return;
+          }
+          this.lastMoveTime = now;
+
+          if(this.clicked && this.selectedTool !== "eraser") {
+               // Converting to canvas coordinates
+               const rect = this.canvas.getBoundingClientRect();
+               const mouseX = e.clientX - rect.left;
+               const mouseY = e.clientY - rect.top;
+               
+               if (this.selectedTool === "pencil") {
+                    this.pencilPoints.push({ x: mouseX, y: mouseY });
                     this.rc.linearPath(
-                    this.pencilPoints.map((p) => [p.x, p.y]),
+                         this.pencilPoints.map((p) => [p.x, p.y]),
                          { stroke: "white" }
                     );
+               } else {
+                    const width = mouseX - this.StartX;
+                    const height = mouseY - this.StartY;
+                    
+                    this.clearCanvas();
+                    
+                    if (this.selectedTool === "rectangle") {
+                         this.rc.rectangle(this.StartX, this.StartY, width, height, {
+                              stroke: "white",
+                         });
+                    } else if (this.selectedTool === "circle") {
+                         const radius = Math.max(Math.abs(width), Math.abs(height)) / 2;
+                         const centreX = this.StartX + width / 2;
+                         const centreY = this.StartY + height / 2;
+                         this.rc.circle(centreX, centreY, radius * 2, {
+                              stroke: "white",
+                         });
+                    }
                }
           }
      }
