@@ -274,27 +274,38 @@ export class Game {
 
      isPointNearRect(px: number, py: number, shape: Shape): boolean {
           if (shape.type !== "rectangle") return false;
+          // Increase precision: shrink hitbox for small rectangles
+          const minSize = 8; // px
+          const x0 = shape.x;
+          const x1 = shape.x + Math.max(shape.width, minSize);
+          const y0 = shape.y;
+          const y1 = shape.y + Math.max(shape.height, minSize);
           return (
-               px >= shape.x &&
-               px <= shape.x + shape.width &&
-               py >= shape.y &&
-               py <= shape.y + shape.height
+               px >= x0 &&
+               px <= x1 &&
+               py >= y0 &&
+               py <= y1
           );
      }
 
      isPointNearCircle(px: number, py: number, shape: Shape): boolean {
           if (shape.type !== "circle") return false;
+          // Increase precision: shrink hitbox for small circles
+          const minRadius = 6; // px
+          const effectiveRadius = Math.max(shape.radius, minRadius);
           const dx = px - shape.centreX;
           const dy = py - shape.centreY;
-          return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
+          return Math.sqrt(dx * dx + dy * dy) <= effectiveRadius;
      }
 
      isPointNearPencil(px: number, py: number, shape: Shape): boolean {
           if (shape.type !== "pencil") return false;
+          // Increase precision: shrink hitbox for pencil strokes
+          const precision = 5; // px
           for (let point of shape.points) {
-          const dx = px - point.x;
-          const dy = py - point.y;
-          if (Math.sqrt(dx * dx + dy * dy) <= 10) return true;
+               const dx = px - point.x;
+               const dy = py - point.y;
+               if (Math.sqrt(dx * dx + dy * dy) <= precision) return true;
           }
           return false;
      }
