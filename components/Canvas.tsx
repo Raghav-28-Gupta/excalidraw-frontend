@@ -1,11 +1,11 @@
 import { initDraw } from "@/draw";
 import { useEffect, useRef, useState } from "react";
 import { IconButton } from "./IconButton";
-import { Circle, Pencil, RectangleHorizontalIcon, Eraser} from "lucide-react";
+import { Circle, Pencil, RectangleHorizontalIcon, Eraser, Diamond, ArrowRight, Minus} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Game } from "@/draw/Game";
 
-export type Tool = "circle" | "rectangle" | "pencil" | "eraser";
+export type Tool = "circle" | "rectangle" | "pencil" | "eraser" | "diamond" | "arrow" | "line";
 
 export function Canvas({
      roomId,
@@ -79,6 +79,24 @@ function TopBar({
                          activated={selectedTool === "circle"}
                          icon={<Circle size={20} />}
                          onClick={() => setSelectedTool("circle")}
+                    />
+                    <div className="w-px h-6 bg-gray-600" />
+                    <IconButton
+                         activated={selectedTool === "diamond"}
+                         icon={<Diamond size={20} />}
+                         onClick={() => setSelectedTool("diamond")}
+                    />
+                    <div className="w-px h-6 bg-gray-600" />
+                    <IconButton
+                         activated={selectedTool === "arrow"}
+                         icon={<ArrowRight size={20} />}
+                         onClick={() => setSelectedTool("arrow")}
+                    />
+                    <div className="w-px h-6 bg-gray-600" />
+                    <IconButton
+                         activated={selectedTool === "line"}
+                         icon={<Minus size={20} />}
+                         onClick={() => setSelectedTool("line")}
                     />
                     <div className="w-px h-6 bg-gray-600" />
                     <IconButton

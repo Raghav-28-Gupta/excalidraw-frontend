@@ -19,6 +19,27 @@ type Shape = {
      id: string;
      type: "pencil";
      points: { x: number; y: number }[];
+} | {
+     id: string;
+     type: "diamond";
+     centerX: number;
+     centerY: number;
+     width: number;
+     height: number;
+} | {
+     id: string;
+     type: "arrow";
+     startX: number;
+     startY: number;
+     endX: number;
+     endY: number;
+} | {
+     id: string;
+     type: "line";
+     startX: number;
+     startY: number;
+     endX: number;
+     endY: number;
 }
 
 export class Game {
@@ -73,7 +94,7 @@ export class Game {
           this.canvas.removeEventListener("contextmenu", this.preventContextMenu);
      }
 
-     setTool(tool: "circle" | "rectangle" | "pencil" | "eraser"){
+     setTool(tool: "circle" | "rectangle" | "pencil" | "eraser" | "diamond" | "arrow" | "line"){
           this.selectedTool = tool;
      }
 
@@ -153,6 +174,18 @@ export class Game {
                     const points = shape.points.map((p) => [p.x, p.y]);
                     // @ts-ignore
                     this.rc.linearPath(points, { stroke: "white" });
+               } else if (shape.type === "diamond") {
+                    this.drawDiamond(shape.centerX, shape.centerY, shape.width, shape.height, {
+                         stroke: "white",
+                    });
+               } else if (shape.type === "arrow") {
+                    this.drawArrow(shape.startX, shape.startY, shape.endX, shape.endY, {
+                         stroke: "white",
+                    });
+               } else if (shape.type === "line") {
+                    this.drawLine(shape.startX, shape.startY, shape.endX, shape.endY, {
+                         stroke: "white",
+                    });
                }
           }
 
@@ -210,7 +243,10 @@ export class Game {
                     return (
                     this.isPointNearRect(cursorX, cursorY, shape) ||
                     this.isPointNearCircle(cursorX, cursorY, shape) ||
-                    this.isPointNearPencil(cursorX, cursorY, shape)
+                    this.isPointNearPencil(cursorX, cursorY, shape) ||
+                    this.isPointNearDiamond(cursorX, cursorY, shape) ||
+                    this.isPointNearArrow(cursorX, cursorY, shape) ||
+                    this.isPointNearLine(cursorX, cursorY, shape)
                     );
                });
 
@@ -218,7 +254,10 @@ export class Game {
                     return !(
                     this.isPointNearRect(cursorX, cursorY, shape) ||
                     this.isPointNearCircle(cursorX, cursorY, shape) ||
-                    this.isPointNearPencil(cursorX, cursorY, shape)
+                    this.isPointNearPencil(cursorX, cursorY, shape) ||
+                    this.isPointNearDiamond(cursorX, cursorY, shape) ||
+                    this.isPointNearArrow(cursorX, cursorY, shape) ||
+                    this.isPointNearLine(cursorX, cursorY, shape)
                     );
                });
 
@@ -264,7 +303,34 @@ export class Game {
                     type: "pencil",
                     points: this.pencilPoints,
                };
-          } 
+          } else if (this.selectedTool === "diamond") {
+               shape = {
+                    id: crypto.randomUUID(),
+                    type: "diamond",
+                    centerX: this.StartX + width / 2,
+                    centerY: this.StartY + height / 2,
+                    width: Math.abs(width),
+                    height: Math.abs(height),
+               };
+          } else if (this.selectedTool === "arrow") {
+               shape = {
+                    id: crypto.randomUUID(),
+                    type: "arrow",
+                    startX: this.StartX,
+                    startY: this.StartY,
+                    endX: this.StartX + width,
+                    endY: this.StartY + height,
+               };
+          } else if (this.selectedTool === "line") {
+               shape = {
+                    id: crypto.randomUUID(),
+                    type: "line",
+                    startX: this.StartX,
+                    startY: this.StartY,
+                    endX: this.StartX + width,
+                    endY: this.StartY + height,
+               };
+          }
 
           if (!shape) {
                return;
@@ -343,6 +409,18 @@ export class Game {
                          const centreX = this.StartX + width / 2;
                          const centreY = this.StartY + height / 2;
                          this.rc.circle(centreX, centreY, radius * 2, {
+                              stroke: "white",
+                         });
+                    } else if (this.selectedTool === "diamond") {
+                         this.drawDiamond(this.StartX + width / 2, this.StartY + height / 2, width, height, {
+                              stroke: "white",
+                         });
+                    } else if (this.selectedTool === "arrow") {
+                         this.drawArrow(this.StartX, this.StartY, this.StartX + width, this.StartY + height, {
+                              stroke: "white",
+                         });
+                    } else if (this.selectedTool === "line") {
+                         this.drawLine(this.StartX, this.StartY, this.StartX + width, this.StartY + height, {
                               stroke: "white",
                          });
                     }
@@ -441,6 +519,65 @@ export class Game {
           return false;
      }
 
+     isPointNearDiamond(px: number, py: number, shape: Shape): boolean {
+          if (shape.type !== "diamond") return false;
+          // For diamond, check if point is inside diamond bounds (simplified to rectangle for now)
+          const halfWidth = shape.width / 2;
+          const halfHeight = shape.height / 2;
+          return (
+               px >= shape.centerX - halfWidth &&
+               px <= shape.centerX + halfWidth &&
+               py >= shape.centerY - halfHeight &&
+               py <= shape.centerY + halfHeight
+          );
+     }
+
+     isPointNearArrow(px: number, py: number, shape: Shape): boolean {
+          if (shape.type !== "arrow") return false;
+          // Check if point is near the arrow line
+          return this.isPointNearLine(px, py, shape.startX, shape.startY, shape.endX, shape.endY);
+     }
+
+     isPointNearLine(px: number, py: number, shape: Shape): boolean;
+     isPointNearLine(px: number, py: number, startX: number, startY: number, endX: number, endY: number): boolean;
+     isPointNearLine(px: number, py: number, shapeOrStartX: Shape | number, startY?: number, endX?: number, endY?: number): boolean {
+          if (typeof shapeOrStartX === 'object') {
+               const shape = shapeOrStartX;
+               if (shape.type !== "line") return false;
+               return this.isPointNearLine(px, py, shape.startX, shape.startY, shape.endX, shape.endY);
+          } else {
+               const startX = shapeOrStartX;
+               // Calculate distance from point to line segment
+               const A = px - startX!;
+               const B = py - startY!;
+               const C = endX! - startX;
+               const D = endY! - startY!;
+               
+               const dot = A * C + B * D;
+               const lenSq = C * C + D * D;
+               
+               if (lenSq === 0) return Math.sqrt(A * A + B * B) <= 5; // Point line
+               
+               const param = dot / lenSq;
+               let xx, yy;
+               
+               if (param < 0) {
+                    xx = startX;
+                    yy = startY!;
+               } else if (param > 1) {
+                    xx = endX!;
+                    yy = endY!;
+               } else {
+                    xx = startX + param * C;
+                    yy = startY! + param * D;
+               }
+               
+               const dx = px - xx;
+               const dy = py - yy;
+               return Math.sqrt(dx * dx + dy * dy) <= 5; // 5px tolerance
+          }
+     }
+
      areShapesEqual(shape1: Shape, shape2: Shape): boolean {
           return shape1.id === shape2.id;
      }
@@ -489,6 +626,44 @@ export class Game {
      public setZoom(scale: number) {
           this.scale = Math.max(this.minScale, Math.min(this.maxScale, scale));
           this.clearCanvas();
+     }
+
+     // Helper functions for drawing diamond, arrow, and line shapes
+     private drawDiamond(centerX: number, centerY: number, width: number, height: number, options: any) {
+          const halfWidth = width / 2;
+          const halfHeight = height / 2;
+          const points = [
+               [centerX, centerY - halfHeight], // top
+               [centerX + halfWidth, centerY], // right
+               [centerX, centerY + halfHeight], // bottom
+               [centerX - halfWidth, centerY]  // left
+          ];
+          // @ts-ignore
+          this.rc.polygon(points, options);
+     }
+
+     private drawArrow(startX: number, startY: number, endX: number, endY: number, options: any) {
+          // Draw line
+          this.rc.line(startX, startY, endX, endY, options);
+          
+          // Calculate arrowhead
+          const headLength = 15;
+          const headAngle = Math.PI / 6; // 30 degrees
+          const angle = Math.atan2(endY - startY, endX - startX);
+          
+          // Arrowhead points
+          const headX1 = endX - headLength * Math.cos(angle - headAngle);
+          const headY1 = endY - headLength * Math.sin(angle - headAngle);
+          const headX2 = endX - headLength * Math.cos(angle + headAngle);
+          const headY2 = endY - headLength * Math.sin(angle + headAngle);
+          
+          // Draw arrowhead
+          this.rc.line(endX, endY, headX1, headY1, options);
+          this.rc.line(endX, endY, headX2, headY2, options);
+     }
+
+     private drawLine(startX: number, startY: number, endX: number, endY: number, options: any) {
+          this.rc.line(startX, startY, endX, endY, options);
      }
 }
 
