@@ -149,7 +149,7 @@ export class Game {
                     this.existingShapes = newShapes;
                     this.clearCanvas();
                     
-                    // Send erase action to backend and other clients
+                    // Sending erase action to backend and other clients
                     if (this.socket.readyState === WebSocket.OPEN) {
                          this.socket.send(JSON.stringify({
                               type: "erase",
