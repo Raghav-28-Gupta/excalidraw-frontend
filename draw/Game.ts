@@ -3,17 +3,20 @@ import { getShapes } from "./http";
 import rough from "roughjs"
 
 type Shape = {
+     id: string;
      type: "rectangle";
      x: number;
      y: number;
      width: number;
      height: number
 } | {
+     id: string;
      type: "circle";
      centreX: number;
      centreY: number;
      radius: number;
 } | {
+     id: string;
      type: "pencil";
      points: { x: number; y: number }[];
 }
@@ -29,14 +32,6 @@ export class Game {
      private selectedTool: Tool = "circle";
      private pencilPoints: { x: number; y: number }[] = [];
      private rc: ReturnType<typeof rough.canvas>;
-
-     // Zoom Implementation
-     private scale = 1;
-     private offsetX = 0;
-     private offsetY = 0;
-     private minScale = 0.2;
-     private maxScale = 10;
-
 
      socket: WebSocket;
 
@@ -57,7 +52,6 @@ export class Game {
           this.canvas.removeEventListener("mousedown", this.mouseDownHandler);
           this.canvas.removeEventListener("mouseup", this.mouseUpHandler);         
           this.canvas.removeEventListener("mousemove", this.mouseMoveHandler);
-          this.canvas.removeEventListener("wheel", this.handleWheel);
      }
 
      setTool(tool: "circle" | "rectangle" | "pencil" | "eraser"){
@@ -76,21 +70,25 @@ export class Game {
                     const parsedShape = JSON.parse(message.message);
                     this.existingShapes.push(parsedShape.shape);
                     this.clearCanvas();
+               } else if(message.type == "erase") {
+                    const parsedMessage = JSON.parse(message.message);
+                    const shapesToErase = parsedMessage.shapesToErase;
+                    
+                    // Remove the erased shapes from local array
+                    this.existingShapes = this.existingShapes.filter(existingShape => {
+                         return !shapesToErase.some((eraseShape: Shape) => 
+                              this.areShapesEqual(existingShape, eraseShape)
+                         );
+                    });
+                    this.clearCanvas();
                }
           }
      }
 
      clearCanvas() {
-          this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset any transform
           this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-          // Apply zoom and pan
-          this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offsetX, this.offsetY);
-
-          // Draw background
-          this.ctx.fillStyle = "black";
-          this.ctx.fillRect(0, 0, this.canvas.width / this.scale, this.canvas.height / this.scale);
-
+          this.ctx.fillStyle = "rgba(0, 0, 0)";
+          this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
           for (const shape of this.existingShapes) {
                if (shape.type === "rectangle") {
@@ -130,6 +128,15 @@ export class Game {
                const cursorX = e.clientX;
                const cursorY = e.clientY;
 
+               // Find shapes that will be erased
+               const shapesToErase = this.existingShapes.filter((shape) => {
+                    return (
+                    this.isPointNearRect(cursorX, cursorY, shape) ||
+                    this.isPointNearCircle(cursorX, cursorY, shape) ||
+                    this.isPointNearPencil(cursorX, cursorY, shape)
+                    );
+               });
+
                const newShapes = this.existingShapes.filter((shape) => {
                     return !(
                     this.isPointNearRect(cursorX, cursorY, shape) ||
@@ -141,6 +148,15 @@ export class Game {
                if (newShapes.length !== this.existingShapes.length) {
                     this.existingShapes = newShapes;
                     this.clearCanvas();
+                    
+                    // Send erase action to backend and other clients
+                    if (this.socket.readyState === WebSocket.OPEN) {
+                         this.socket.send(JSON.stringify({
+                              type: "erase",
+                              message: JSON.stringify({ shapesToErase }),
+                              roomId: this.roomId
+                         }));
+                    }
                }
                return;
           }
@@ -149,6 +165,7 @@ export class Game {
           let shape: Shape | null = null;
           if (this.selectedTool === "rectangle") {
                shape = {
+                    id: crypto.randomUUID(),
                     type: "rectangle",
                     x: this.StartX,
                     y: this.StartY,
@@ -158,6 +175,7 @@ export class Game {
           } else if (this.selectedTool === "circle") {
                const radius = Math.max(Math.abs(width), Math.abs(height)) / 2;
                shape = {
+                    id: crypto.randomUUID(),
                     type: "circle",
                     radius: radius,
                     centreX: this.StartX + radius,
@@ -165,6 +183,7 @@ export class Game {
                }
           } else if(this.selectedTool === "pencil") {
                shape = {
+                    id: crypto.randomUUID(),
                     type: "pencil",
                     points: this.pencilPoints,
                };
@@ -228,37 +247,15 @@ export class Game {
           this.canvas.addEventListener("mousedown", this.mouseDownHandler);
           this.canvas.addEventListener("mouseup", this.mouseUpHandler);         
           this.canvas.addEventListener("mousemove", this.mouseMoveHandler);
-          this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
      }
-
-     handleWheel = (e: WheelEvent) => {
-          e.preventDefault();
-          const zoomSensitivity = 0.1;
-          const mouseX = e.offsetX;
-          const mouseY = e.offsetY;
-
-          const direction = e.deltaY > 0 ? -1 : 1;
-          const zoomFactor = 1 + direction * zoomSensitivity;
-
-          const newScale = this.scale * zoomFactor;
-          if (newScale < this.minScale || newScale > this.maxScale) return;
-
-          // Adjust offset to zoom around mouse
-          this.offsetX = mouseX - ((mouseX - this.offsetX) * zoomFactor);
-          this.offsetY = mouseY - ((mouseY - this.offsetY) * zoomFactor);
-
-          this.scale = newScale;
-          this.clearCanvas();
-     };
-
 
      isPointNearRect(px: number, py: number, shape: Shape): boolean {
           if (shape.type !== "rectangle") return false;
           return (
-          px >= shape.x &&
-          px <= shape.x + shape.width &&
-          py >= shape.y &&
-          py <= shape.y + shape.height
+               px >= shape.x &&
+               px <= shape.x + shape.width &&
+               py >= shape.y &&
+               py <= shape.y + shape.height
           );
      }
 
@@ -277,6 +274,10 @@ export class Game {
           if (Math.sqrt(dx * dx + dy * dy) <= 10) return true;
           }
           return false;
+     }
+
+     areShapesEqual(shape1: Shape, shape2: Shape): boolean {
+          return shape1.id === shape2.id;
      }
 
 }
